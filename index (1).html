@@ -1,0 +1,1774 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>NILBORN-DZ-Pay</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-card: rgba(30, 41, 59, 0.85);
+  --bg-card-solid: #1e293b;
+  --bg-input: #0f172a;
+  --bg-nav: linear-gradient(to top, #0b1120, #1e293b);
+  --border-color: #334155;
+  --border-light: rgba(51, 65, 85, 0.5);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-dim: #475569;
+  --accent: #00ff64;
+  --accent-dim: rgba(0, 255, 100, 0.15);
+  --shadow-card: 0 4px 24px rgba(0,0,0,0.25);
+  --modal-bg: #0f172a;
+  --scanner-bg: #0f172a;
+  --toast-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+[data-theme="light"] {
+  --bg-primary: #f1f5f9;
+  --bg-secondary: #ffffff;
+  --bg-card: rgba(255,255,255,0.9);
+  --bg-card-solid: #ffffff;
+  --bg-input: #f1f5f9;
+  --bg-nav: linear-gradient(to top, #e2e8f0, #ffffff);
+  --border-color: #e2e8f0;
+  --border-light: rgba(226,232,240,0.7);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-dim: #cbd5e1;
+  --accent: #059669;
+  --accent-dim: rgba(5, 150, 105, 0.1);
+  --shadow-card: 0 4px 24px rgba(0,0,0,0.06);
+  --modal-bg: #ffffff;
+  --scanner-bg: #e2e8f0;
+  --toast-shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { height:100%; overflow:hidden; font-family:'Cairo',sans-serif; background:var(--bg-primary); color:var(--text-primary); transition: background 0.35s, color 0.35s; }
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-thumb { background:var(--border-color); border-radius:4px; }
+input, select, textarea { font-family:'Cairo',sans-serif; }
+
+.app-container { height:100dvh; display:flex; flex-direction:column; background:var(--bg-primary); }
+.tab-content { flex:1; overflow-y:auto; overflow-x:hidden; }
+
+/* Activation */
+.activation-bg { background:linear-gradient(135deg,#0f172a,#1e293b 50%,#0f172a); min-height:100dvh; }
+.activation-input { background:#1e293b; border:2px solid #334155; transition:border-color 0.3s,box-shadow 0.3s; color:#fff; }
+.activation-input:focus { border-color:#00ff64; box-shadow:0 0 20px rgba(0,255,100,0.15); outline:none; }
+
+/* Digital Display */
+.digital-display { font-family:'Roboto Mono',monospace; background:#000; border:2px solid #1a1a2e; box-shadow:inset 0 0 30px rgba(0,0,0,0.8),0 0 15px rgba(0,255,0,0.1); }
+.digital-price { color:#00FF00; text-shadow:0 0 20px rgba(0,255,0,0.5),0 0 40px rgba(0,255,0,0.2); font-family:'Roboto Mono',monospace; }
+
+/* Scanner */
+#pos-scanner-container video { border-radius:12px; object-fit:cover; }
+#pos-scanner-container { border-radius:12px; overflow:hidden; position:relative; }
+#pos-scanner-container img { display:none!important; }
+#inv-scanner-container video { border-radius:12px; }
+#inv-scanner-container { border-radius:12px; overflow:hidden; position:relative; }
+#inv-scanner-container img { display:none!important; }
+#pos-scanner-container > div:not(:first-child) { display:none!important; }
+#pos-scanner-container #qr-shaded-region { border:none!important; }
+#pos-scanner-container br, #pos-scanner-container span, #pos-scanner-container a { display:none!important; }
+#pos-scanner-container video + * { display:none!important; }
+
+.scan-laser { position:absolute; left:10%; right:10%; height:2px; background:linear-gradient(90deg,transparent,#00ff64 20%,#00ff00 50%,#00ff64 80%,transparent); box-shadow:0 0 8px #00ff00,0 0 20px rgba(0,255,0,0.4); z-index:10; animation:laserScan 1.8s ease-in-out infinite; pointer-events:none; border-radius:2px; }
+@keyframes laserScan { 0%{top:20%;opacity:0.6} 50%{top:75%;opacity:1} 100%{top:20%;opacity:0.6} }
+
+.scan-corners { position:absolute; inset:12%; z-index:10; pointer-events:none; border:none; }
+.scan-corners::before,.scan-corners::after,.scan-corner-bl::before,.scan-corner-br::before { content:''; position:absolute; width:20px; height:20px; border-color:#00ff64; border-style:solid; }
+.scan-corners::before { top:0;left:0;border-width:3px 0 0 3px;border-radius:4px 0 0 0; }
+.scan-corners::after { top:0;right:0;border-width:3px 3px 0 0;border-radius:0 4px 0 0; }
+.scan-corner-bl::before { bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 4px; }
+.scan-corner-br::before { bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 4px 0; }
+
+.scan-flash { position:absolute;inset:0;background:rgba(0,255,100,0.25);z-index:15;pointer-events:none;animation:scanFlash 0.3s ease-out forwards;border-radius:12px; }
+@keyframes scanFlash { 0%{opacity:1} 100%{opacity:0} }
+
+/* Bottom Nav */
+.bottom-nav { background:var(--bg-nav); border-top:1px solid var(--border-color); padding-bottom:env(safe-area-inset-bottom,0); }
+.nav-btn { transition:all 0.2s ease; min-height:56px; }
+.nav-btn.active { color:var(--accent); }
+.nav-btn.active .nav-icon { transform:scale(1.1); }
+.nav-btn .nav-indicator { width:0; height:3px; border-radius:3px; background:var(--accent); transition:width 0.3s ease; }
+.nav-btn.active .nav-indicator { width:20px; }
+
+/* Glass Card */
+.glass-card { background:var(--bg-card); border:1px solid var(--border-light); border-radius:16px; box-shadow:var(--shadow-card); transition:background 0.35s, border-color 0.35s; }
+
+/* Toggle */
+.toggle-track { width:52px; height:28px; border-radius:14px; background:var(--border-color); transition:background 0.3s; cursor:pointer; position:relative; flex-shrink:0; }
+.toggle-track.active { background:#00ff64; }
+[data-theme="light"] .toggle-track.active { background:#059669; }
+.toggle-thumb { width:24px; height:24px; border-radius:50%; background:white; position:absolute; top:2px; left:2px; transition:transform 0.3s; box-shadow:0 2px 4px rgba(0,0,0,0.2); }
+.toggle-track.active .toggle-thumb { transform:translateX(24px); }
+
+/* Modal */
+.modal-overlay { background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); }
+.modal-sheet { background:var(--modal-bg); border-top-left-radius:24px; border-top-right-radius:24px; border-top:1px solid var(--border-color); }
+
+/* Animations */
+@keyframes slideUp { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+@keyframes pulseGreen { 0%,100%{box-shadow:0 0 10px rgba(0,255,0,0.2)} 50%{box-shadow:0 0 25px rgba(0,255,0,0.4)} }
+.animate-slide-up { animation:slideUp 0.3s ease-out; }
+.animate-fade-in { animation:fadeIn 0.3s ease-out; }
+.pulse-border { animation:pulseGreen 2s infinite; }
+
+/* Cart item */
+.cart-item { border-bottom:1px solid var(--border-color); transition:background 0.15s; }
+.cart-item:active { background:var(--accent-dim); }
+
+/* Buttons */
+.btn-primary { background:linear-gradient(135deg,#00ff64,#00cc50); color:#000; font-weight:700; transition:transform 0.1s,box-shadow 0.2s; border:none; cursor:pointer; }
+.btn-primary:active { transform:scale(0.97); }
+[data-theme="light"] .btn-primary { background:linear-gradient(135deg,#059669,#047857); color:#fff; }
+.btn-credit { background:linear-gradient(135deg,#f59e0b,#d97706); color:#000; font-weight:700; border:none; cursor:pointer; }
+[data-theme="light"] .btn-credit { color:#fff; }
+.btn-ghost { background:var(--bg-input); color:var(--text-secondary); border:1px solid var(--border-color); font-weight:600; cursor:pointer; transition:all 0.2s; }
+.btn-ghost:active { background:var(--accent-dim); }
+
+/* Mobile inputs */
+.mobile-input { width:100%; background:var(--bg-input); color:var(--text-primary); border:1.5px solid var(--border-color); border-radius:14px; padding:14px 16px; font-size:16px; transition:border-color 0.3s, box-shadow 0.3s; outline:none; }
+.mobile-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim); }
+.mobile-input::placeholder { color:var(--text-muted); }
+
+/* Invoice table */
+.invoice-table { width:100%; border-collapse:collapse; }
+.invoice-table th { background:var(--bg-input); color:var(--text-secondary); font-size:11px; padding:10px 6px; text-align:right; }
+.invoice-table td { padding:10px 6px; border-bottom:1px solid var(--border-color); color:var(--text-primary); font-size:13px; }
+.invoice-table tr:last-child td { border-bottom:none; }
+.invoice-table .total-row td { border-top:2px solid var(--accent); font-weight:700; color:var(--accent); font-size:15px; }
+
+[dir="ltr"] { font-family:'Cairo',sans-serif; }
+[dir="ltr"] .invoice-table th { text-align:left; }
+
+/* Safe areas */
+.safe-bottom { padding-bottom:max(8px, env(safe-area-inset-bottom)); }
+
+/* Torch button */
+.torch-btn { position:absolute;top:8px;right:8px;z-index:20;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;cursor:pointer; }
+.torch-btn.active { background:rgba(255,200,0,0.3);border-color:#ffc800; }
+
+/* Badge */
+.badge { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+</style>
+</head>
+<body>
+
+<!-- ACTIVATION SCREEN -->
+<div id="activation-screen" class="activation-bg flex items-center justify-center p-6">
+  <div class="w-full max-w-sm text-center animate-fade-in">
+    <div class="mb-8">
+      <div class="w-24 h-24 mx-auto mb-5 rounded-3xl bg-gradient-to-br from-green-500/20 to-emerald-500/10 flex items-center justify-center border border-green-500/30">
+        <svg class="w-12 h-12 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      </div>
+      <h1 class="text-3xl font-black text-white" style="text-shadow:0 0 40px rgba(0,255,100,0.3)">NILBORN-DZ-Pay</h1>
+      <p class="text-slate-400 mt-3 text-sm" data-i18n="activation_subtitle">أدخل رمز التفعيل لبدء استخدام التطبيق</p>
+    </div>
+    <div class="space-y-4">
+      <input id="activation-code" type="text" placeholder="رمز التفعيل"
+        class="activation-input w-full px-5 py-4 rounded-2xl text-center text-lg tracking-widest" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button onclick="handleActivation()" class="btn-primary w-full py-4 rounded-2xl text-lg">
+        <span data-i18n="activate_btn">تفعيل</span> ✓
+      </button>
+      <p id="activation-error" class="text-red-400 text-sm hidden"></p>
+    </div>
+    <p class="text-slate-600 text-xs mt-8">v3.0 — Made for Algerian Shopkeepers 🇩🇿</p>
+  </div>
+</div>
+
+<!-- TRIAL EXPIRED SCREEN -->
+<div id="expired-screen" class="activation-bg flex items-center justify-center p-6 hidden">
+  <div class="w-full max-w-sm text-center animate-fade-in">
+    <div class="w-24 h-24 mx-auto mb-5 rounded-3xl bg-red-500/20 flex items-center justify-center border border-red-500/30">
+      <svg class="w-12 h-12 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v.01M12 9v3m9 3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    </div>
+    <h2 class="text-2xl font-bold text-white mb-2" data-i18n="trial_expired_title">انتهت الفترة التجريبية</h2>
+    <p class="text-slate-400 mb-6 text-sm" data-i18n="trial_expired_desc">لقد استخدمت 50 عملية بيع. أدخل رمز التفعيل الكامل للاستمرار.</p>
+    <input id="expired-code" type="text" placeholder="رمز التفعيل الكامل"
+      class="activation-input w-full px-5 py-4 rounded-2xl text-center text-lg tracking-widest mb-4">
+    <button onclick="handleExpiredActivation()" class="btn-primary w-full py-4 rounded-2xl text-lg">
+      <span data-i18n="activate_btn">تفعيل</span> ✓
+    </button>
+    <p id="expired-error" class="text-red-400 text-sm mt-3 hidden"></p>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="main-app" class="app-container hidden">
+  <div class="tab-content relative">
+
+    <!-- TAB 1: POS -->
+    <div id="tab-pos" class="h-full flex flex-col">
+      <!-- Top Half -->
+      <div class="flex" style="height:44%">
+        <!-- Left: Total Display -->
+        <div class="w-[38%] p-2 flex flex-col justify-center">
+          <div class="digital-display rounded-2xl p-3 flex flex-col items-center justify-center h-full pulse-border">
+            <span class="text-slate-500 text-[10px] font-bold tracking-wider" data-i18n="total_dzd">Total (DZD)</span>
+            <span class="text-[10px] text-slate-600 mb-0.5">د.ج</span>
+            <span id="pos-total" class="digital-price text-2xl font-black leading-tight">0.00</span>
+            <span id="pos-item-count" class="text-slate-600 text-[10px] mt-1">0 <span data-i18n="items">عنصر</span></span>
+          </div>
+        </div>
+        <!-- Right: Camera -->
+        <div class="w-[62%] p-2 flex flex-col">
+          <div class="flex-1 rounded-2xl overflow-hidden relative flex items-center justify-center" style="background:var(--scanner-bg)">
+            <div id="pos-scanner-container" class="w-full h-full"></div>
+            <div id="pos-scanner-placeholder" class="absolute inset-0 flex flex-col items-center justify-center" style="color:var(--text-muted)">
+              <svg class="w-10 h-10 mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.04l-.821 1.315z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/></svg>
+              <span class="text-xs" data-i18n="camera_loading">جاري تحميل الكاميرا...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Half: Cart -->
+      <div class="flex-1 flex flex-col min-h-0" style="background:var(--bg-secondary)">
+        <div class="px-4 py-2.5 flex items-center justify-between" style="border-bottom:1px solid var(--border-color)">
+          <h3 class="text-sm font-bold" style="color:var(--text-secondary)"><span data-i18n="cart">السلة</span> 🛒</h3>
+          <div class="flex gap-2">
+            <button onclick="openManualEntry()" class="text-blue-400 text-xs font-bold px-3 py-1 rounded-lg active:bg-blue-500/10" data-i18n="manual_entry">إضافة يدوية</button>
+            <button onclick="clearCart()" class="text-red-400 text-xs font-bold px-3 py-1 rounded-lg active:bg-red-500/10" data-i18n="clear">مسح الكل</button>
+          </div>
+        </div>
+        <div id="cart-list" class="flex-1 overflow-y-auto px-3">
+          <div id="cart-empty" class="h-full flex items-center justify-center text-sm" style="color:var(--text-dim)">
+            <span data-i18n="scan_to_add">امسح المنتجات لإضافتها</span>
+          </div>
+        </div>
+        <!-- Fixed Bottom Buttons -->
+        <div class="p-3 space-y-2" style="border-top:1px solid var(--border-color); background:var(--bg-primary)">
+          <button onclick="handlePaid()" class="btn-primary w-full py-4 rounded-2xl text-lg flex items-center justify-center gap-2">
+            <span data-i18n="paid">تم الدفع</span>
+            <span class="text-sm opacity-60">Paid</span>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+          </button>
+          <button id="btn-credit" onclick="handleCredit()" class="btn-credit w-full py-3.5 rounded-2xl text-base flex items-center justify-center gap-2 hidden">
+            <span data-i18n="credit">كريدي</span>
+            <span class="text-sm opacity-60">Crédit</span>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: INVENTORY -->
+    <div id="tab-inventory" class="h-full flex flex-col hidden">
+      <div class="p-4" style="background:var(--bg-secondary); border-bottom:1px solid var(--border-color)">
+        <h2 class="font-bold text-lg mb-3" style="color:var(--text-primary)"><span data-i18n="inventory">المخزن</span> 📦</h2>
+        <div class="flex gap-2 mb-3">
+          <button onclick="exportDatabase()" class="flex-1 bg-blue-600 text-white py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-1.5 active:opacity-80">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+            <span data-i18n="export_db">تصدير القاعدة</span>
+          </button>
+          <button onclick="document.getElementById('import-file').click()" class="flex-1 bg-purple-600 text-white py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-1.5 active:opacity-80">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+            <span data-i18n="import_db">استيراد القاعدة</span>
+          </button>
+          <input type="file" id="import-file" accept=".json" class="hidden" onchange="importDatabase(event)">
+        </div>
+        <button onclick="openAddProduct()" class="w-full bg-green-600 text-white py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 text-base active:opacity-80">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          <span data-i18n="add_product">إضافة منتج</span>
+        </button>
+      </div>
+      <div class="px-4 py-3">
+        <input id="inv-search" type="text" placeholder="بحث..." oninput="renderInventory()" class="mobile-input">
+      </div>
+      <div id="inventory-list" class="flex-1 overflow-y-auto px-4 pb-4"></div>
+    </div>
+
+    <!-- TAB 3: DASHBOARD -->
+    <div id="tab-dashboard" class="h-full flex flex-col hidden">
+      <div class="p-4" style="background:var(--bg-secondary); border-bottom:1px solid var(--border-color)">
+        <h2 class="font-bold text-lg" style="color:var(--text-primary)"><span data-i18n="dashboard">لوحة البيانات</span> 📊</h2>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-6">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-2 gap-3">
+          <div class="glass-card p-4 text-center">
+            <p class="text-xs mb-1" style="color:var(--text-muted)" data-i18n="today_profit">أرباح اليوم</p>
+            <p id="dash-today-profit" class="text-2xl font-black" style="color:var(--accent)">0</p>
+            <p class="text-xs" style="color:var(--text-dim)">د.ج</p>
+          </div>
+          <div class="glass-card p-4 text-center">
+            <p class="text-xs mb-1" style="color:var(--text-muted)" data-i18n="today_sales">مبيعات اليوم</p>
+            <p id="dash-today-count" class="text-blue-400 text-2xl font-black">0</p>
+          </div>
+        </div>
+        <!-- Most Sold -->
+        <div class="glass-card p-4">
+          <h3 class="text-sm font-bold mb-3" style="color:var(--text-primary)">🏆 <span data-i18n="most_sold">الأكثر طلباً</span></h3>
+          <div id="dash-top-products" class="space-y-2 text-sm"></div>
+        </div>
+        <!-- Transaction History -->
+        <div class="glass-card p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-bold" style="color:var(--text-primary)">📋 <span data-i18n="transactions">سجل المعاملات</span></h3>
+            <select id="dash-filter" onchange="renderDashboard()" class="text-xs px-3 py-2 rounded-xl border-0 focus:outline-none font-bold" style="background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border-color)">
+              <option value="today" data-i18n-opt="today">اليوم</option>
+              <option value="week" data-i18n-opt="week">آخر أسبوع</option>
+              <option value="month" data-i18n-opt="month">آخر 30 يوم</option>
+              <option value="all" data-i18n-opt="all">الكل</option>
+            </select>
+          </div>
+          <div id="dash-transactions" class="space-y-2 max-h-72 overflow-y-auto"></div>
+        </div>
+        <!-- Export Buttons -->
+        <div class="flex gap-3">
+          <button onclick="exportTransactionsPDF()" class="flex-1 bg-red-600 text-white py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-1.5 active:opacity-80">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+            <span data-i18n="export_pdf">تصدير PDF</span>
+          </button>
+          <button onclick="exportCreditPDF()" class="flex-1 bg-orange-600 text-white py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-1.5 active:opacity-80">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+            <span data-i18n="export_credit_pdf">كريدي PDF</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: SETTINGS -->
+    <div id="tab-settings" class="h-full flex flex-col hidden">
+      <div class="p-4" style="background:var(--bg-secondary); border-bottom:1px solid var(--border-color)">
+        <h2 class="font-bold text-lg" style="color:var(--text-primary)"><span data-i18n="settings">الإعدادات</span> ⚙️</h2>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4 space-y-3 pb-6">
+        <!-- License Info -->
+        <div class="glass-card p-4">
+          <h3 class="text-sm font-bold mb-2" style="color:var(--text-primary)" data-i18n="license_info">معلومات الرخصة</h3>
+          <p id="settings-license" class="text-sm font-bold" style="color:var(--accent)"></p>
+          <p id="settings-remaining" class="text-xs mt-1" style="color:var(--text-muted)"></p>
+        </div>
+
+        <!-- Dark/Light Mode -->
+        <div class="glass-card p-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:var(--accent-dim)">
+                <span id="theme-icon" class="text-xl">🌙</span>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold" style="color:var(--text-primary)" data-i18n="theme_mode">الوضع</h3>
+                <p class="text-xs" style="color:var(--text-muted)" id="theme-label" data-i18n="dark_mode">الوضع الليلي</p>
+              </div>
+            </div>
+            <div id="theme-toggle" class="toggle-track" onclick="toggleTheme()">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Language -->
+        <div class="glass-card p-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:var(--accent-dim)">
+                <span class="text-xl">🌐</span>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold" style="color:var(--text-primary)" data-i18n="language">اللغة</h3>
+                <p class="text-xs" style="color:var(--text-muted)" data-i18n="lang_desc">العربية / Français</p>
+              </div>
+            </div>
+            <button onclick="toggleLanguage()" id="lang-btn" class="px-5 py-2.5 rounded-xl text-sm font-bold active:opacity-80" style="background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border-color)">
+              FR
+            </button>
+          </div>
+        </div>
+
+        <!-- Credit Toggle -->
+        <div class="glass-card p-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-orange-500/15 flex items-center justify-center">
+                <span class="text-xl">💳</span>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold" style="color:var(--text-primary)" data-i18n="enable_credit">تفعيل نظام الكريدي</h3>
+                <p class="text-xs" style="color:var(--text-muted)" data-i18n="credit_desc">السماح بالبيع بالدين</p>
+              </div>
+            </div>
+            <div id="credit-toggle" class="toggle-track" onclick="toggleCredit()">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Invoice Send Toggle -->
+        <div class="glass-card p-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-green-500/15 flex items-center justify-center">
+                <span class="text-xl">🧾</span>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold" style="color:var(--text-primary)" data-i18n="enable_invoice">تفعيل إرسال الفاتورة</h3>
+                <p class="text-xs" style="color:var(--text-muted)" data-i18n="invoice_desc">إرسال فاتورة PDF عبر واتساب بعد البيع</p>
+              </div>
+            </div>
+            <div id="invoice-toggle" class="toggle-track" onclick="toggleInvoice()">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <div id="invoice-options" class="hidden mt-4 space-y-3 pt-3" style="border-top:1px solid var(--border-color)">
+            <div>
+              <label class="text-xs mb-1.5 block font-bold" style="color:var(--text-muted)" data-i18n="shop_name_label">اسم المحل (يظهر في الفاتورة)</label>
+              <input id="shop-name-input" type="text" placeholder="مثال: سوبر ماركت النيل" oninput="saveShopName()" class="mobile-input">
+            </div>
+            <div>
+              <label class="text-xs mb-1.5 block font-bold" style="color:var(--text-muted)" data-i18n="shop_phone_label">رقم هاتف المحل (اختياري)</label>
+              <input id="shop-phone-input" type="tel" placeholder="07XXXXXXXX" oninput="saveShopPhone()" dir="ltr" class="mobile-input">
+            </div>
+            <div class="rounded-xl p-3 flex items-start gap-2" style="background:rgba(59,130,246,0.1)">
+              <svg class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
+              <p class="text-blue-400 text-xs leading-relaxed" data-i18n="invoice_info">بعد كل عملية بيع، ستظهر نافذة لإدخال رقم هاتف الزبون الجزائري لإرسال الفاتورة عبر واتساب</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Credit Management -->
+        <div id="credit-management" class="hidden">
+          <div class="glass-card p-4">
+            <h3 class="text-sm font-bold mb-3" style="color:var(--text-primary)">👥 <span data-i18n="credit_customers">عملاء الكريدي</span></h3>
+            <div id="credit-customer-list" class="space-y-2"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav flex items-center justify-around py-1.5 px-1 safe-bottom">
+    <button onclick="switchTab('pos')" class="nav-btn active flex flex-col items-center py-1.5 px-4" data-tab="pos">
+      <div class="nav-indicator mb-1"></div>
+      <svg class="nav-icon w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"/></svg>
+      <span class="text-[11px] mt-0.5 font-bold" data-i18n="nav_pos">نقطة البيع</span>
+    </button>
+    <button onclick="switchTab('inventory')" class="nav-btn flex flex-col items-center py-1.5 px-4" style="color:var(--text-muted)" data-tab="inventory">
+      <div class="nav-indicator mb-1"></div>
+      <svg class="nav-icon w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>
+      <span class="text-[11px] mt-0.5 font-bold" data-i18n="nav_inventory">المخزن</span>
+    </button>
+    <button onclick="switchTab('dashboard')" class="nav-btn flex flex-col items-center py-1.5 px-4" style="color:var(--text-muted)" data-tab="dashboard">
+      <div class="nav-indicator mb-1"></div>
+      <svg class="nav-icon w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+      <span class="text-[11px] mt-0.5 font-bold" data-i18n="nav_dashboard">البيانات</span>
+    </button>
+    <button onclick="switchTab('settings')" class="nav-btn flex flex-col items-center py-1.5 px-4" style="color:var(--text-muted)" data-tab="settings">
+      <div class="nav-indicator mb-1"></div>
+      <svg class="nav-icon w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <span class="text-[11px] mt-0.5 font-bold" data-i18n="nav_settings">إعدادات</span>
+    </button>
+  </nav>
+</div>
+
+<!-- MODALS -->
+
+<!-- Add Product Modal -->
+<div id="modal-add-product" class="fixed inset-0 z-50 hidden">
+  <div class="modal-overlay absolute inset-0" onclick="closeModal('modal-add-product')"></div>
+  <div class="modal-sheet absolute bottom-0 left-0 right-0 p-5 animate-slide-up max-h-[90vh] overflow-y-auto">
+    <div class="w-12 h-1.5 rounded-full mx-auto mb-5" style="background:var(--border-color)"></div>
+    <h3 class="text-lg font-bold mb-4" style="color:var(--text-primary)" data-i18n="add_product">إضافة منتج</h3>
+    <div class="space-y-4">
+      <div>
+        <label class="text-xs mb-1.5 block font-bold" style="color:var(--text-muted)" data-i18n="barcode">الباركود</label>
+        <div class="flex gap-2">
+          <input id="prod-barcode" type="text" class="mobile-input flex-1">
+          <button onclick="scanForInventory()" class="bg-blue-600 text-white px-5 py-3 rounded-2xl active:opacity-80 flex-shrink-0">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.04l-.821 1.315z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/></svg>
+          </button>
+        </div>
+        <div id="inv-scanner-container" class="mt-3 hidden h-48 rounded-2xl overflow-hidden"></div>
+      </div>
+      <div>
+        <label class="text-xs mb-1.5 block font-bold" style="color:var(--text-muted)" data-i18n="product_name">اسم المنتج</label>
+        <input id="prod-name" type="text" class="mobile-input">
+      </div>
+      <div>
+        <label class="text-xs mb-1.5 block font-bold" style="color:var(--text-muted)"><span data-i18n="price">السعر</span> (DZD / د.ج)</label>
+        <input id="prod-price" type="number" step="0.01" class="mobile-input">
+      </div>
+      <button onclick="saveProduct()" class="btn-primary w-full py-4 rounded-2xl text-lg">
+        <span data-i18n="save">حفظ</span> ✓
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Product Modal -->
+<div id="modal-edit-product" class="fixed inset-0 z-50 hidden">
+  <div class="modal-overlay absolute inset-0" onclick="closeModal('modal-edit-product')"></div>
+  <div class="modal-sheet absolute bottom-0 left-0 right-0 p-5 animate-slide-up">
+    <div class="w-12 h-1.5 rounded-full mx-auto mb-5" style="background:var(--border-color)"></div>
+    <h3 class="text-lg font-bold mb-4" style="color:var(--text-primary)" data-i18n="edit_product">تعديل المنتج</h3>
+    <div class="space-y-4">
+      <input id="edit-barcode" type="hidden">
+      <div>
+        <label class="text-xs mb-1.5 block font-bold" style="color:var(--text-muted)" data-i18n="product_name">اسم المنتج</label>
+        <input id="edit-name" type="text" class="mobile-input">
+      </div>
+      <div>
+        <label class="text-xs mb-1.5 block font-bold" style="color:var(--text-muted)"><span data-i18n="price">السعر</span> (DZD / د.ج)</label>
+        <input id="edit-price" type="number" step="0.01" class="mobile-input">
+      </div>
+      <button onclick="updateProduct()" class="btn-primary w-full py-4 rounded-2xl text-lg">
+        <span data-i18n="update">تحديث</span> ✓
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Credit Modal -->
+<div id="modal-credit" class="fixed inset-0 z-50 hidden">
+  <div class="modal-overlay absolute inset-0" onclick="closeModal('modal-credit')"></div>
+  <div class="modal-sheet absolute bottom-0 left-0 right-0 p-5 animate-slide-up">
+    <div class="w-12 h-1.5 rounded-full mx-auto mb-5" style="background:var(--border-color)"></div>
+    <h3 class="text-lg font-bold mb-4" style="color:var(--text-primary)">👤 <span data-i18n="credit_sale">بيع بالدين</span></h3>
+    <div class="space-y-4">
+      <div>
+        <label class="text-xs mb-1.5 block font-bold" style="color:var(--text-muted)" data-i18n="select_customer">اختر عميل أو أضف جديد</label>
+        <select id="credit-customer-select" class="mobile-input mb-3">
+          <option value="" data-i18n-opt="new_customer">-- عميل جديد --</option>
+        </select>
+        <input id="credit-new-customer" type="text" placeholder="اسم العميل الجديد" class="mobile-input">
+      </div>
+      <button onclick="saveCreditSale()" class="btn-credit w-full py-4 rounded-2xl text-lg">
+        <span data-i18n="save_credit">حفظ الكريدي</span> ✓
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Customer Detail Modal -->
+<div id="modal-customer-detail" class="fixed inset-0 z-50 hidden">
+  <div class="modal-overlay absolute inset-0" onclick="closeModal('modal-customer-detail')"></div>
+  <div class="modal-sheet absolute bottom-0 left-0 right-0 p-5 animate-slide-up max-h-[85vh] overflow-y-auto">
+    <div class="w-12 h-1.5 rounded-full mx-auto mb-5" style="background:var(--border-color)"></div>
+    <h3 id="customer-detail-name" class="text-lg font-bold mb-4" style="color:var(--text-primary)"></h3>
+    <div id="customer-detail-list" class="space-y-3"></div>
+  </div>
+</div>
+
+<!-- Invoice Send Modal -->
+<div id="modal-invoice" class="fixed inset-0 z-50 hidden">
+  <div class="modal-overlay absolute inset-0" onclick="closeInvoiceModal()"></div>
+  <div class="modal-sheet absolute bottom-0 left-0 right-0 p-5 animate-slide-up">
+    <div class="w-12 h-1.5 rounded-full mx-auto mb-5" style="background:var(--border-color)"></div>
+    <div class="flex items-center gap-3 mb-5">
+      <div class="w-14 h-14 rounded-2xl bg-green-600/20 flex items-center justify-center flex-shrink-0">
+        <svg class="w-7 h-7 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <div>
+        <h3 class="text-lg font-bold" style="color:var(--text-primary)" data-i18n="sale_done">تمت العملية بنجاح!</h3>
+        <p class="text-sm font-bold" style="color:var(--accent)" id="invoice-total-display"></p>
+      </div>
+    </div>
+    <div class="rounded-2xl p-4 mb-4" style="background:var(--bg-input); border:1px solid var(--border-color)">
+      <label class="text-sm font-bold mb-3 block" style="color:var(--text-primary)" data-i18n="send_invoice_whatsapp">إرسال الفاتورة عبر واتساب</label>
+      <div class="flex gap-0 items-center">
+        <span class="text-sm font-bold px-4 py-3.5 rounded-r-2xl flex-shrink-0" dir="ltr" style="background:var(--border-color); color:var(--text-muted)">+213</span>
+        <input id="invoice-phone" type="tel" placeholder="07XXXXXXXX" dir="ltr" maxlength="10"
+          class="flex-1 px-4 py-3.5 rounded-l-2xl text-base font-mono tracking-wider" style="background:var(--bg-secondary); color:var(--text-primary); border:1.5px solid var(--border-color); border-right:none; outline:none;">
+      </div>
+      <p class="text-xs mt-2" style="color:var(--text-dim)" data-i18n="phone_hint">أدخل رقم هاتف الزبون الجزائري (يبدأ بـ 05 أو 06 أو 07)</p>
+    </div>
+    <div class="space-y-2.5">
+      <button onclick="sendInvoiceWhatsApp()" class="w-full bg-green-600 text-white py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 active:opacity-80">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        <span data-i18n="send_whatsapp">إرسال عبر واتساب</span>
+      </button>
+      <button onclick="downloadInvoicePDF()" class="w-full bg-blue-600 text-white py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 active:opacity-80">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+        <span data-i18n="download_invoice">تحميل الفاتورة PDF</span>
+      </button>
+      <button onclick="closeInvoiceModal()" class="w-full py-3 rounded-2xl font-bold text-sm" style="background:var(--bg-input); color:var(--text-muted); border:1px solid var(--border-color)">
+        <span data-i18n="skip">تخطي</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Transaction Detail Modal -->
+<div id="modal-tx-detail" class="fixed inset-0 z-50 hidden">
+  <div class="modal-overlay absolute inset-0" onclick="closeModal('modal-tx-detail')"></div>
+  <div class="modal-sheet absolute bottom-0 left-0 right-0 p-5 animate-slide-up max-h-[90vh] overflow-y-auto">
+    <div class="w-12 h-1.5 rounded-full mx-auto mb-5" style="background:var(--border-color)"></div>
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-bold flex items-center gap-2" style="color:var(--text-primary)">
+        <span>🧾</span>
+        <span data-i18n="invoice_detail">تفاصيل الفاتورة</span>
+      </h3>
+      <span id="tx-detail-id" class="text-xs font-mono" style="color:var(--text-dim)"></span>
+    </div>
+    <div id="tx-detail-content" class="space-y-4"></div>
+  </div>
+</div>
+
+<!-- Unknown Product Modal -->
+<div id="modal-unknown-product" class="fixed inset-0 z-50 hidden">
+  <div class="modal-overlay absolute inset-0" onclick="closeModal('modal-unknown-product')"></div>
+  <div class="modal-sheet absolute bottom-0 left-0 right-0 p-5 animate-slide-up">
+    <div class="w-12 h-1.5 rounded-full mx-auto mb-5" style="background:var(--border-color)"></div>
+    <h3 class="text-lg font-bold mb-2" style="color:var(--text-primary)" data-i18n="unknown_product">منتج غير معروف</h3>
+    <p class="text-sm mb-4" style="color:var(--text-muted)"><span data-i18n="barcode">الباركود</span>: <span id="unknown-barcode" class="text-yellow-400 font-mono font-bold"></span></p>
+    <div class="space-y-4">
+      <div>
+        <label class="text-xs mb-1.5 block font-bold" style="color:var(--text-muted)" data-i18n="product_name">اسم المنتج</label>
+        <input id="unknown-name" type="text" class="mobile-input">
+      </div>
+      <div>
+        <label class="text-xs mb-1.5 block font-bold" style="color:var(--text-muted)"><span data-i18n="price">السعر</span> (DZD / د.ج)</label>
+        <input id="unknown-price" type="number" step="0.01" class="mobile-input">
+      </div>
+      <button onclick="saveUnknownProduct()" class="btn-primary w-full py-4 rounded-2xl text-lg">
+        <span data-i18n="save_and_add">حفظ وإضافة للسلة</span> ✓
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Manual Entry Modal -->
+<div id="modal-manual-entry" class="fixed inset-0 z-50 hidden">
+  <div class="modal-overlay absolute inset-0" onclick="closeModal('modal-manual-entry')"></div>
+  <div class="modal-sheet absolute bottom-0 left-0 right-0 p-5 animate-slide-up max-h-[90vh] overflow-y-auto">
+    <div class="w-12 h-1.5 rounded-full mx-auto mb-5" style="background:var(--border-color)"></div>
+    <h3 class="text-lg font-bold mb-4" style="color:var(--text-primary)" data-i18n="manual_entry">إضافة يدوية</h3>
+    <div class="space-y-4">
+      <div class="relative">
+        <label class="text-xs mb-1.5 block font-bold" style="color:var(--text-muted)" data-i18n="product_name">اسم المنتج</label>
+        <input id="manual-name" type="text" class="mobile-input" oninput="searchProductsByName(this.value)" autocomplete="off">
+        <div id="manual-suggestions" class="absolute left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-20 hidden max-h-48 overflow-y-auto"></div>
+      </div>
+      <div>
+        <label class="text-xs mb-1.5 block font-bold" style="color:var(--text-muted)"><span data-i18n="price">السعر</span> (DZD / د.ج)</label>
+        <input id="manual-price" type="number" step="0.01" class="mobile-input">
+      </div>
+      <button onclick="addManualToCart()" class="btn-primary w-full py-4 rounded-2xl text-lg">
+        <span data-i18n="add_to_cart">إضافة للسلة</span> ✓
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="fixed top-5 left-4 right-4 z-[100] py-3.5 px-5 rounded-2xl text-sm font-bold shadow-lg hidden animate-fade-in text-center" style="box-shadow:var(--toast-shadow)"></div>
+
+<script>
+// ==================== LOCALIZATION ====================
+const i18n = {
+  ar: {
+    manual_entry:'إضافة يدوية',add_to_cart:'إضافة للسلة',
+    activation_subtitle:'أدخل رمز التفعيل لبدء استخدام التطبيق',activate_btn:'تفعيل',trial_expired_title:'انتهت الفترة التجريبية',trial_expired_desc:'لقد استخدمت 50 عملية بيع. أدخل رمز التفعيل الكامل للاستمرار.',total_dzd:'Total (DZD)',items:'عنصر',cart:'السلة',clear:'مسح الكل',scan_to_add:'امسح المنتجات لإضافتها',paid:'تم الدفع',credit:'كريدي',inventory:'المخزن',export_db:'تصدير القاعدة',import_db:'استيراد القاعدة',add_product:'إضافة منتج',barcode:'الباركود',product_name:'اسم المنتج',price:'السعر',save:'حفظ',edit_product:'تعديل المنتج',update:'تحديث',dashboard:'لوحة البيانات',today_profit:'أرباح اليوم',today_sales:'مبيعات اليوم',most_sold:'الأكثر طلباً',transactions:'سجل المعاملات',export_pdf:'تصدير PDF',export_credit_pdf:'كريدي PDF',settings:'الإعدادات',license_info:'معلومات الرخصة',language:'اللغة',lang_desc:'العربية / Français',enable_credit:'تفعيل نظام الكريدي',credit_desc:'السماح بالبيع بالدين',credit_customers:'عملاء الكريدي',nav_pos:'نقطة البيع',nav_inventory:'المخزن',nav_dashboard:'البيانات',nav_settings:'إعدادات',credit_sale:'بيع بالدين',select_customer:'اختر عميل أو أضف جديد',save_credit:'حفظ الكريدي',camera_loading:'جاري تحميل الكاميرا...',unknown_product:'منتج غير معروف',save_and_add:'حفظ وإضافة للسلة',mark_paid:'تم الدفع ✓',total_debt:'إجمالي الدين',no_products:'لا توجد منتجات',no_transactions:'لا توجد معاملات',no_credit_customers:'لا يوجد عملاء',trial_access:'وصول تجريبي',lifetime_access:'وصول مدى الحياة',remaining:'المتبقي',of:'من',checkout:'عملية',invalid_code:'رمز التفعيل غير صحيح',need_lifetime:'يجب إدخال رمز التفعيل الكامل',sale_saved:'تم حفظ البيع ✓',credit_saved:'تم حفظ الكريدي ✓',product_saved:'تم حفظ المنتج ✓',product_updated:'تم تحديث المنتج ✓',product_deleted:'تم حذف المنتج',db_exported:'تم تصدير القاعدة',db_imported:'تم استيراد القاعدة ✓',cart_empty:'السلة فارغة!',enter_customer:'أدخل اسم العميل!',fill_fields:'يرجى ملء جميع الحقول!',marked_paid:'تم تحويل المعاملة للمدفوعات ✓',today:'اليوم',week:'آخر أسبوع',month:'آخر 30 يوم',all:'الكل',new_customer:'-- عميل جديد --',delete_confirm:'هل تريد حذف هذا المنتج؟',trial_warning:'تنبيه: الفترة التجريبية',remaining_checkouts:'عمليات بيع متبقية',search:'بحث...',
+    enable_invoice:'تفعيل إرسال الفاتورة',invoice_desc:'إرسال فاتورة PDF عبر واتساب بعد البيع',shop_name_label:'اسم المحل (يظهر في الفاتورة)',shop_phone_label:'رقم هاتف المحل (اختياري)',invoice_info:'بعد كل عملية بيع، ستظهر نافذة لإدخال رقم هاتف الزبون الجزائري لإرسال الفاتورة عبر واتساب',sale_done:'تمت العملية بنجاح!',send_invoice_whatsapp:'إرسال الفاتورة عبر واتساب',phone_hint:'أدخل رقم هاتف الزبون الجزائري (يبدأ بـ 05 أو 06 أو 07)',send_whatsapp:'إرسال عبر واتساب',download_invoice:'تحميل الفاتورة PDF',skip:'تخطي',invoice_detail:'تفاصيل الفاتورة',invoice_number:'رقم الفاتورة',date_time:'التاريخ والوقت',product:'المنتج',quantity:'الكمية',unit_price:'سعر الوحدة',subtotal:'المجموع الفرعي',total:'المجموع الكلي',view_invoice:'عرض الفاتورة',resend_invoice:'إعادة إرسال الفاتورة',paid_label:'مدفوع',credit_label:'كريدي',phone_invalid:'رقم الهاتف غير صحيح! يجب أن يبدأ بـ 05 أو 06 أو 07',invoice_title:'فاتورة بيع',thank_you:'شكراً لتعاملكم معنا!',send_this_invoice:'إرسال هذه الفاتورة',download_this_invoice:'تحميل الفاتورة',
+    theme_mode:'الوضع',dark_mode:'الوضع الليلي',light_mode:'الوضع النهاري',
+  },
+  fr: {
+    manual_entry:'Saisie manuelle',add_to_cart:'Ajouter au panier',
+    activation_subtitle:"Entrez le code d'activation pour commencer",activate_btn:'Activer',trial_expired_title:"Période d'essai expirée",trial_expired_desc:'Vous avez utilisé 50 transactions. Entrez le code complet pour continuer.',total_dzd:'Total (DZD)',items:'article(s)',cart:'Panier',clear:'Tout effacer',scan_to_add:'Scannez les produits pour les ajouter',paid:'Payé',credit:'Crédit',inventory:'Inventaire',export_db:'Exporter DB',import_db:'Importer DB',add_product:'Ajouter un produit',barcode:'Code-barres',product_name:'Nom du produit',price:'Prix',save:'Enregistrer',edit_product:'Modifier le produit',update:'Mettre à jour',dashboard:'Tableau de bord',today_profit:'Bénéfice du jour',today_sales:'Ventes du jour',most_sold:'Les plus vendus',transactions:'Historique',export_pdf:'Exporter PDF',export_credit_pdf:'Crédit PDF',settings:'Paramètres',license_info:'Infos Licence',language:'Langue',lang_desc:'Arabe / Français',enable_credit:'Activer le système Crédit',credit_desc:'Autoriser la vente à crédit',credit_customers:'Clients à crédit',nav_pos:'Caisse',nav_inventory:'Inventaire',nav_dashboard:'Stats',nav_settings:'Réglages',credit_sale:'Vente à crédit',select_customer:"Choisir un client ou en ajouter un nouveau",save_credit:'Enregistrer le crédit',camera_loading:'Chargement de la caméra...',unknown_product:'Produit inconnu',save_and_add:'Enregistrer et ajouter au panier',mark_paid:'Marquer payé ✓',total_debt:'Dette totale',no_products:'Aucun produit',no_transactions:'Aucune transaction',no_credit_customers:'Aucun client',trial_access:"Accès d'essai",lifetime_access:'Accès à vie',remaining:'Restant',of:'sur',checkout:'transaction(s)',invalid_code:"Code d'activation invalide",need_lifetime:"Veuillez entrer le code d'activation complet",sale_saved:'Vente enregistrée ✓',credit_saved:'Crédit enregistré ✓',product_saved:'Produit enregistré ✓',product_updated:'Produit mis à jour ✓',product_deleted:'Produit supprimé',db_exported:'Base de données exportée',db_imported:'Base de données importée ✓',cart_empty:'Le panier est vide!',enter_customer:'Entrez le nom du client!',fill_fields:'Veuillez remplir tous les champs!',marked_paid:'Transaction déplacée vers les paiements ✓',today:"Aujourd'hui",week:'Dernière semaine',month:'Derniers 30 jours',all:'Tout',new_customer:'-- Nouveau client --',delete_confirm:'Voulez-vous supprimer ce produit?',trial_warning:"Attention: Période d'essai",remaining_checkouts:'transactions restantes',search:'Rechercher...',
+    enable_invoice:"Activer l'envoi de facture",invoice_desc:'Envoyer une facture PDF via WhatsApp après la vente',shop_name_label:'Nom du magasin (affiché sur la facture)',shop_phone_label:'Téléphone du magasin (optionnel)',invoice_info:"Après chaque vente, une fenêtre apparaîtra pour entrer le numéro de téléphone algérien du client pour envoyer la facture via WhatsApp",sale_done:'Vente réussie!',send_invoice_whatsapp:'Envoyer la facture via WhatsApp',phone_hint:'Entrez le numéro algérien du client (commence par 05, 06 ou 07)',send_whatsapp:'Envoyer via WhatsApp',download_invoice:'Télécharger la facture PDF',skip:'Passer',invoice_detail:'Détails de la facture',invoice_number:'N° Facture',date_time:'Date et heure',product:'Produit',quantity:'Qté',unit_price:'Prix unitaire',subtotal:'Sous-total',total:'Total',view_invoice:'Voir la facture',resend_invoice:'Renvoyer la facture',paid_label:'Payé',credit_label:'Crédit',phone_invalid:'Numéro invalide! Doit commencer par 05, 06 ou 07',invoice_title:'Facture de vente',thank_you:'Merci pour votre confiance!',send_this_invoice:'Envoyer cette facture',download_this_invoice:'Télécharger la facture',
+    theme_mode:'Mode',dark_mode:'Mode sombre',light_mode:'Mode clair',
+  }
+};
+
+// ==================== STATE ====================
+let currentLang = localStorage.getItem('ndp_lang') || 'ar';
+let currentTheme = localStorage.getItem('ndp_theme') || 'dark';
+let cart = [];
+let posScanner = null;
+let invScanner = null;
+let currentTab = 'pos';
+let lastCompletedTransaction = null;
+
+const KEYS = {
+  LICENSE:'ndp_license', PRODUCTS:'ndp_products', TRANSACTIONS:'ndp_transactions',
+  CREDITS:'ndp_credits', CREDIT_ENABLED:'ndp_credit_enabled', INVOICE_ENABLED:'ndp_invoice_enabled',
+  SHOP_NAME:'ndp_shop_name', SHOP_PHONE:'ndp_shop_phone', LANG:'ndp_lang', THEME:'ndp_theme',
+};
+
+function getStore(key, fallback=[]) { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } }
+function setStore(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+// ==================== THEME ====================
+function applyTheme() {
+  const html = document.documentElement;
+  if (currentTheme === 'light') {
+    html.setAttribute('data-theme', 'light');
+  } else {
+    html.removeAttribute('data-theme');
+  }
+  updateThemeToggleUI();
+}
+
+function toggleTheme() {
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem(KEYS.THEME, currentTheme);
+  applyTheme();
+}
+
+function updateThemeToggleUI() {
+  const toggle = document.getElementById('theme-toggle');
+  const icon = document.getElementById('theme-icon');
+  const label = document.getElementById('theme-label');
+  if (currentTheme === 'light') {
+    toggle.classList.add('active');
+    icon.textContent = '☀️';
+    if (label) label.textContent = t('light_mode');
+  } else {
+    toggle.classList.remove('active');
+    icon.textContent = '🌙';
+    if (label) label.textContent = t('dark_mode');
+  }
+}
+
+// ==================== ACTIVATION ====================
+function handleActivation() {
+  const code = document.getElementById('activation-code').value.trim();
+  if (code === '11382009') {
+    setStore(KEYS.LICENSE, { type:'trial', checkouts:0 });
+    showApp();
+  } else if (code === 'Nil_2026_pay') {
+    setStore(KEYS.LICENSE, { type:'lifetime', checkouts:0 });
+    showApp();
+  } else {
+    const errEl = document.getElementById('activation-error');
+    errEl.textContent = t('invalid_code');
+    errEl.classList.remove('hidden');
+    setTimeout(() => errEl.classList.add('hidden'), 3000);
+  }
+}
+
+function handleExpiredActivation() {
+  const code = document.getElementById('expired-code').value.trim();
+  if (code === 'Nil_2026_pay') {
+    setStore(KEYS.LICENSE, { type:'lifetime', checkouts:0 });
+    document.getElementById('expired-screen').classList.add('hidden');
+    showApp();
+  } else {
+    const errEl = document.getElementById('expired-error');
+    errEl.textContent = t('need_lifetime');
+    errEl.classList.remove('hidden');
+    setTimeout(() => errEl.classList.add('hidden'), 3000);
+  }
+}
+
+function checkLicense() {
+  const license = getStore(KEYS.LICENSE, null);
+  if (!license) {
+    document.getElementById('activation-screen').classList.remove('hidden');
+    document.getElementById('main-app').classList.add('hidden');
+    document.getElementById('expired-screen').classList.add('hidden');
+    return false;
+  }
+  if (license.type === 'trial' && license.checkouts >= 50) {
+    document.getElementById('activation-screen').classList.add('hidden');
+    document.getElementById('main-app').classList.add('hidden');
+    document.getElementById('expired-screen').classList.remove('hidden');
+    return false;
+  }
+  return true;
+}
+
+function canCheckout() {
+  const license = getStore(KEYS.LICENSE, null);
+  if (!license) return false;
+  if (license.type === 'lifetime') return true;
+  return license.checkouts < 50;
+}
+
+function incrementCheckout() {
+  const license = getStore(KEYS.LICENSE, null);
+  if (license && license.type === 'trial') {
+    license.checkouts++;
+    setStore(KEYS.LICENSE, license);
+  }
+}
+
+// ==================== APP INIT ====================
+function showApp() {
+  document.getElementById('activation-screen').classList.add('hidden');
+  document.getElementById('expired-screen').classList.add('hidden');
+  document.getElementById('main-app').classList.remove('hidden');
+  applyTheme();
+  applyLanguage();
+  updateCreditToggleUI();
+  updateInvoiceToggleUI();
+  initPOSScanner();
+  renderInventory();
+  renderDashboard();
+  renderSettings();
+  updateCreditButton();
+}
+
+function init() {
+  applyTheme();
+  if (checkLicense()) { showApp(); }
+  document.getElementById('activation-code').addEventListener('keyup', e => { if (e.key==='Enter') handleActivation(); });
+  document.getElementById('expired-code').addEventListener('keyup', e => { if (e.key==='Enter') handleExpiredActivation(); });
+}
+
+// ==================== LANGUAGE ====================
+function t(key) { return i18n[currentLang][key] || key; }
+
+function toggleLanguage() {
+  currentLang = currentLang === 'ar' ? 'fr' : 'ar';
+  localStorage.setItem(KEYS.LANG, currentLang);
+  applyLanguage();
+}
+
+function applyLanguage() {
+  const html = document.documentElement;
+  if (currentLang === 'ar') { html.setAttribute('dir','rtl'); html.setAttribute('lang','ar'); }
+  else { html.setAttribute('dir','ltr'); html.setAttribute('lang','fr'); }
+
+  document.getElementById('lang-btn').textContent = currentLang === 'ar' ? 'FR' : 'AR';
+
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (i18n[currentLang][key]) el.textContent = i18n[currentLang][key];
+  });
+
+  const filter = document.getElementById('dash-filter');
+  if (filter) { filter.options[0].text=t('today'); filter.options[1].text=t('week'); filter.options[2].text=t('month'); filter.options[3].text=t('all'); }
+
+  const creditSel = document.getElementById('credit-customer-select');
+  if (creditSel && creditSel.options[0]) creditSel.options[0].text = t('new_customer');
+
+  const search = document.getElementById('inv-search');
+  if (search) search.placeholder = t('search');
+
+  updateThemeToggleUI();
+  renderInventory(); renderDashboard(); renderSettings(); renderCart();
+}
+
+// ==================== TAB NAVIGATION ====================
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
+  document.getElementById(`tab-${tab}`).classList.remove('hidden');
+
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.classList.remove('active');
+    btn.style.color = 'var(--text-muted)';
+  });
+  const activeBtn = document.querySelector(`.nav-btn[data-tab="${tab}"]`);
+  activeBtn.classList.add('active');
+  activeBtn.style.color = '';
+
+  if (tab === 'dashboard') renderDashboard();
+  if (tab === 'settings') renderSettings();
+  if (tab === 'inventory') renderInventory();
+
+  if (tab === 'pos') { initPOSScanner(); } else { stopPOSScanner(); }
+}
+
+// ==================== BARCODE SCANNER ====================
+function initPOSScanner() {
+  if (posScanner) return;
+  const container = document.getElementById('pos-scanner-container');
+  const placeholder = document.getElementById('pos-scanner-placeholder');
+
+  posScanner = new Html5Qrcode('pos-scanner-container');
+  posScanner.start(
+    { facingMode:'environment' },
+    { fps:15, qrbox:{ width:220, height:100 }, aspectRatio:1.0,
+      formatsToSupport:[
+        Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.QR_CODE
+      ]
+    },
+    (decodedText) => onBarcodeScanPOS(decodedText),
+    () => {}
+  ).then(() => {
+    if (placeholder) placeholder.style.display = 'none';
+  }).catch(err => {
+    console.warn('Camera error:', err);
+    if (placeholder) {
+      placeholder.innerHTML = '<svg class="w-10 h-10 mb-2 text-yellow-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg><span class="text-yellow-500 text-xs text-center px-2">Camera not available</span>';
+    }
+  });
+}
+
+function stopPOSScanner() {
+  if (posScanner) {
+    posScanner.stop().then(() => { posScanner.clear(); posScanner = null; }).catch(() => { posScanner = null; });
+  }
+}
+
+let lastScanTime = 0;
+function onBarcodeScanPOS(barcode) {
+  const now = Date.now();
+  if (now - lastScanTime < 1200) return;
+  lastScanTime = now;
+  if (navigator.vibrate) navigator.vibrate(100);
+
+  const products = getStore(KEYS.PRODUCTS, []);
+  const product = products.find(p => p.barcode === barcode);
+
+  if (product) { addToCart(product); }
+  else {
+    document.getElementById('unknown-barcode').textContent = barcode;
+    document.getElementById('unknown-name').value = '';
+    document.getElementById('unknown-price').value = '';
+    document.getElementById('unknown-barcode').dataset.barcode = barcode;
+    openModal('modal-unknown-product');
+  }
+}
+
+function saveUnknownProduct() {
+  const barcode = document.getElementById('unknown-barcode').dataset.barcode;
+  const name = document.getElementById('unknown-name').value.trim();
+  const price = parseFloat(document.getElementById('unknown-price').value);
+  if (!name || isNaN(price) || price <= 0) { showToast(t('fill_fields'),'red'); return; }
+  const product = { barcode, name, price };
+  const products = getStore(KEYS.PRODUCTS, []);
+  products.push(product);
+  setStore(KEYS.PRODUCTS, products);
+  addToCart(product);
+  closeModal('modal-unknown-product');
+  showToast(t('product_saved'));
+}
+
+function scanForInventory() {
+  const container = document.getElementById('inv-scanner-container');
+  if (!container.classList.contains('hidden')) {
+    if (invScanner) { invScanner.stop().then(() => { invScanner.clear(); invScanner = null; }).catch(() => { invScanner = null; }); }
+    container.classList.add('hidden'); return;
+  }
+  container.classList.remove('hidden');
+  invScanner = new Html5Qrcode('inv-scanner-container');
+  invScanner.start(
+    { facingMode:'environment' },
+    { fps:15, qrbox:{ width:200, height:80 } },
+    (decodedText) => {
+      document.getElementById('prod-barcode').value = decodedText;
+      if (navigator.vibrate) navigator.vibrate(100);
+      invScanner.stop().then(() => { invScanner.clear(); invScanner = null; }).catch(() => { invScanner = null; });
+      container.classList.add('hidden');
+    },
+    () => {}
+  ).catch(err => { console.warn('Inv camera error:', err); container.classList.add('hidden'); });
+}
+
+// ==================== CART ====================
+function addToCart(product) {
+  const existing = cart.find(item => item.barcode === product.barcode);
+  if (existing) { existing.qty++; } else { cart.push({ ...product, qty:1 }); }
+  renderCart();
+}
+
+function removeFromCart(barcode) {
+  const idx = cart.findIndex(item => item.barcode === barcode);
+  if (idx > -1) { if (cart[idx].qty > 1) cart[idx].qty--; else cart.splice(idx, 1); }
+  renderCart();
+}
+
+function incrementCartItem(barcode) {
+  const item = cart.find(i => i.barcode === barcode);
+  if (item) item.qty++;
+  renderCart();
+}
+
+function clearCart() { cart = []; renderCart(); }
+function getCartTotal() { return cart.reduce((sum, item) => sum + (item.price * item.qty), 0); }
+function getCartCount() { return cart.reduce((sum, item) => sum + item.qty, 0); }
+
+function renderCart() {
+  const total = getCartTotal();
+  const count = getCartCount();
+  document.getElementById('pos-total').textContent = total.toFixed(2);
+  document.getElementById('pos-item-count').innerHTML = `${count} ${t('items')}`;
+
+  const listEl = document.getElementById('cart-list');
+  if (cart.length === 0) {
+    listEl.innerHTML = `<div class="h-full flex items-center justify-center text-sm" style="color:var(--text-dim)"><span>${t('scan_to_add')}</span></div>`;
+    return;
+  }
+
+  listEl.innerHTML = cart.map(item => `
+    <div class="cart-item flex items-center justify-between py-3 px-1">
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-bold truncate" style="color:var(--text-primary)">${item.name}</p>
+        <p class="text-xs" style="color:var(--text-dim)">${item.price.toFixed(2)} د.ج × ${item.qty}</p>
+      </div>
+      <div class="flex items-center gap-1.5 mx-2">
+        <button onclick="removeFromCart('${item.barcode}')" class="w-9 h-9 bg-red-500/15 text-red-400 rounded-xl flex items-center justify-center text-lg font-black active:bg-red-500/30">−</button>
+        <span class="text-sm w-7 text-center font-black" style="color:var(--text-primary)">${item.qty}</span>
+        <button onclick="incrementCartItem('${item.barcode}')" class="w-9 h-9 bg-green-500/15 text-green-400 rounded-xl flex items-center justify-center text-lg font-black active:bg-green-500/30">+</button>
+      </div>
+      <p class="font-bold text-sm w-20 text-left" style="color:var(--accent)">${(item.price * item.qty).toFixed(2)}</p>
+    </div>
+  `).join('');
+}
+
+// ==================== CHECKOUT ====================
+function handlePaid() {
+  if (cart.length === 0) { showToast(t('cart_empty'),'red'); return; }
+  if (!canCheckout()) { document.getElementById('main-app').classList.add('hidden'); document.getElementById('expired-screen').classList.remove('hidden'); stopPOSScanner(); return; }
+
+  const transaction = {
+    id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
+    items: [...cart], total: getCartTotal(), date: new Date().toISOString(), type:'paid'
+  };
+
+  const transactions = getStore(KEYS.TRANSACTIONS, []);
+  transactions.push(transaction);
+  setStore(KEYS.TRANSACTIONS, transactions);
+  incrementCheckout();
+  cart = []; renderCart();
+
+  const invoiceEnabled = localStorage.getItem(KEYS.INVOICE_ENABLED) === 'true';
+  if (invoiceEnabled) { lastCompletedTransaction = transaction; showInvoiceModal(transaction); }
+  else { showToast(t('sale_saved')); }
+
+  const license = getStore(KEYS.LICENSE, null);
+  if (license && license.type === 'trial') {
+    const remaining = 50 - license.checkouts;
+    if (remaining <= 10 && remaining > 0) { setTimeout(() => showToast(`${t('trial_warning')}: ${remaining} ${t('remaining_checkouts')}`,'orange'), 1500); }
+    if (remaining <= 0) { setTimeout(() => { document.getElementById('main-app').classList.add('hidden'); document.getElementById('expired-screen').classList.remove('hidden'); stopPOSScanner(); }, 2000); }
+  }
+}
+
+function handleCredit() {
+  if (cart.length === 0) { showToast(t('cart_empty'),'red'); return; }
+  if (!canCheckout()) { document.getElementById('main-app').classList.add('hidden'); document.getElementById('expired-screen').classList.remove('hidden'); stopPOSScanner(); return; }
+
+  const credits = getStore(KEYS.CREDITS, []);
+  const customers = [...new Set(credits.map(c => c.customer))];
+  const select = document.getElementById('credit-customer-select');
+  select.innerHTML = `<option value="">${t('new_customer')}</option>`;
+  customers.forEach(c => { select.innerHTML += `<option value="${c}">${c}</option>`; });
+  document.getElementById('credit-new-customer').value = '';
+  openModal('modal-credit');
+}
+
+function saveCreditSale() {
+  const selectVal = document.getElementById('credit-customer-select').value;
+  const newName = document.getElementById('credit-new-customer').value.trim();
+  const customer = selectVal || newName;
+  if (!customer) { showToast(t('enter_customer'),'red'); return; }
+
+  const creditTx = {
+    id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
+    customer, items: [...cart], total: getCartTotal(), date: new Date().toISOString()
+  };
+
+  const credits = getStore(KEYS.CREDITS, []);
+  credits.push(creditTx);
+  setStore(KEYS.CREDITS, credits);
+  incrementCheckout();
+  cart = []; renderCart();
+  closeModal('modal-credit');
+
+  const invoiceEnabled = localStorage.getItem(KEYS.INVOICE_ENABLED) === 'true';
+  if (invoiceEnabled) { const txForInvoice = { ...creditTx, type:'credit' }; lastCompletedTransaction = txForInvoice; showInvoiceModal(txForInvoice); }
+  else { showToast(t('credit_saved')); }
+
+  const license = getStore(KEYS.LICENSE, null);
+  if (license && license.type === 'trial' && license.checkouts >= 50) {
+    setTimeout(() => { document.getElementById('main-app').classList.add('hidden'); document.getElementById('expired-screen').classList.remove('hidden'); stopPOSScanner(); }, 2000);
+  }
+}
+
+// ==================== INVOICE SYSTEM ====================
+function showInvoiceModal(tx) {
+  document.getElementById('invoice-total-display').textContent = `${tx.total.toFixed(2)} د.ج`;
+  document.getElementById('invoice-phone').value = '';
+  lastCompletedTransaction = tx;
+  openModal('modal-invoice');
+}
+
+function closeInvoiceModal() {
+  closeModal('modal-invoice');
+  if (lastCompletedTransaction) {
+    const type = lastCompletedTransaction.type || 'paid';
+    showToast(type === 'credit' ? t('credit_saved') : t('sale_saved'));
+  }
+  lastCompletedTransaction = null;
+}
+
+function validateAlgerianPhone(phone) { phone = phone.replace(/[\s\-]/g,''); return /^0[567]\d{8}$/.test(phone); }
+function formatPhoneForWhatsApp(phone) { phone = phone.replace(/[\s\-]/g,''); if (phone.startsWith('0')) phone = '213' + phone.substring(1); return phone; }
+
+function buildInvoiceText(tx) {
+  const shopName = localStorage.getItem(KEYS.SHOP_NAME) || 'NILBORN-DZ-Pay';
+  const shopPhone = localStorage.getItem(KEYS.SHOP_PHONE) || '';
+  const d = new Date(tx.date);
+  const dateStr = d.toLocaleDateString('ar-DZ',{year:'numeric',month:'2-digit',day:'2-digit'});
+  const timeStr = d.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'});
+
+  let text = `🧾 *${shopName}*\n━━━━━━━━━━━━━━━━━\n📅 ${dateStr} | ⏰ ${timeStr}\n🔖 ${t('invoice_number')}: #${tx.id.toUpperCase()}\n`;
+  if (tx.customer) text += `👤 ${tx.customer}\n`;
+  text += `━━━━━━━━━━━━━━━━━\n\n`;
+  tx.items.forEach((item, i) => {
+    const subtotal = (item.price * item.qty).toFixed(2);
+    text += `${i+1}. ${item.name}\n   ${item.qty} × ${item.price.toFixed(2)} = *${subtotal} د.ج*\n`;
+  });
+  text += `\n━━━━━━━━━━━━━━━━━\n💰 *${t('total')}: ${tx.total.toFixed(2)} د.ج*\n━━━━━━━━━━━━━━━━━\n`;
+  text += tx.type === 'credit' ? `⚠️ *${t('credit_label')}*\n` : `✅ *${t('paid_label')}*\n`;
+  text += `\n${t('thank_you')} 🙏`;
+  if (shopPhone) text += `\n📞 ${shopPhone}`;
+  return text;
+}
+
+function sendInvoiceWhatsApp() {
+  const phoneInput = document.getElementById('invoice-phone').value.trim();
+  if (!phoneInput || !validateAlgerianPhone(phoneInput)) { showToast(t('phone_invalid'),'red'); return; }
+  const whatsappNumber = formatPhoneForWhatsApp(phoneInput);
+  const text = buildInvoiceText(lastCompletedTransaction);
+  window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`, '_blank');
+  closeModal('modal-invoice');
+  showToast(lastCompletedTransaction.type === 'credit' ? t('credit_saved') : t('sale_saved'));
+  lastCompletedTransaction = null;
+}
+
+function downloadInvoicePDF() {
+  if (!lastCompletedTransaction) return;
+  generateInvoicePDF(lastCompletedTransaction, true);
+}
+
+function generateInvoicePDF(tx, download = true) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:[80,200] });
+  const shopName = localStorage.getItem(KEYS.SHOP_NAME) || 'NILBORN-DZ-Pay';
+  const shopPhone = localStorage.getItem(KEYS.SHOP_PHONE) || '';
+  const d = new Date(tx.date);
+  const dateStr = d.toLocaleDateString('en',{year:'numeric',month:'2-digit',day:'2-digit'});
+  const timeStr = d.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'});
+  let y = 8;
+  doc.setFontSize(12); doc.setFont(undefined,'bold');
+  doc.text(shopName, 40, y, {align:'center'}); y += 5;
+  if (shopPhone) { doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.text(shopPhone, 40, y, {align:'center'}); y += 4; }
+  doc.setLineWidth(0.3); doc.line(5, y, 75, y); y += 5;
+  doc.setFontSize(8); doc.text(`Invoice: #${tx.id.toUpperCase()}`, 5, y); y += 4;
+  doc.text(`Date: ${dateStr}  Time: ${timeStr}`, 5, y); y += 4;
+  if (tx.customer) { doc.text(`Client: ${tx.customer}`, 5, y); y += 4; }
+  doc.text(`Status: ${tx.type === 'credit' ? 'CREDIT' : 'PAID'}`, 5, y); y += 3;
+  doc.line(5, y, 75, y); y += 5;
+  doc.setFontSize(7); doc.setFont(undefined,'bold');
+  doc.text('Product', 5, y); doc.text('Qty', 42, y, {align:'center'}); doc.text('Price', 55, y, {align:'center'}); doc.text('Total', 72, y, {align:'right'}); y += 3;
+  doc.setLineWidth(0.1); doc.line(5, y, 75, y); y += 4;
+  doc.setFont(undefined,'normal');
+  tx.items.forEach(item => {
+    const name = item.name.length > 18 ? item.name.substring(0,18)+'..' : item.name;
+    doc.text(name, 5, y); doc.text(item.qty.toString(), 42, y, {align:'center'}); doc.text(item.price.toFixed(2), 55, y, {align:'center'}); doc.text((item.price*item.qty).toFixed(2), 72, y, {align:'right'}); y += 5;
+  });
+  doc.setLineWidth(0.3); doc.line(5, y, 75, y); y += 5;
+  doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.text(`TOTAL: ${tx.total.toFixed(2)} DZD`, 40, y, {align:'center'}); y += 6;
+  doc.line(5, y, 75, y); y += 5;
+  doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.text('Thank you / Merci', 40, y, {align:'center'}); y += 4;
+  doc.text('NILBORN-DZ-Pay', 40, y, {align:'center'});
+  if (download) doc.save(`Invoice-${tx.id}.pdf`);
+  return doc;
+}
+
+function sendExistingInvoice(txId, source) {
+  let tx = null;
+  if (source === 'paid') { const transactions = getStore(KEYS.TRANSACTIONS, []); tx = transactions.find(t => t.id === txId); }
+  else { const credits = getStore(KEYS.CREDITS, []); tx = credits.find(c => c.id === txId); if (tx) tx = { ...tx, type:'credit' }; }
+  if (!tx) return;
+  lastCompletedTransaction = tx;
+  closeModal('modal-tx-detail');
+  showInvoiceModal(tx);
+}
+
+function downloadExistingInvoice(txId, source) {
+  let tx = null;
+  if (source === 'paid') { const transactions = getStore(KEYS.TRANSACTIONS, []); tx = transactions.find(t => t.id === txId); }
+  else { const credits = getStore(KEYS.CREDITS, []); tx = credits.find(c => c.id === txId); if (tx) tx = { ...tx, type:'credit' }; }
+  if (!tx) return;
+  generateInvoicePDF(tx, true);
+}
+
+// ==================== TRANSACTION DETAIL ====================
+function showTransactionDetail(txId, source) {
+  let tx = null;
+  let txType = 'paid';
+  if (source === 'paid') {
+    const transactions = getStore(KEYS.TRANSACTIONS, []);
+    tx = transactions.find(t => t.id === txId);
+    txType = tx?.originallyCredit ? 'credit-paid' : 'paid';
+  } else {
+    const credits = getStore(KEYS.CREDITS, []);
+    tx = credits.find(c => c.id === txId);
+    txType = 'credit';
+  }
+  if (!tx) return;
+
+  const d = new Date(tx.date);
+  const dateStr = d.toLocaleDateString('ar-DZ',{year:'numeric',month:'long',day:'numeric'});
+  const timeStr = d.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+  document.getElementById('tx-detail-id').textContent = `#${tx.id.toUpperCase().substring(0,10)}`;
+  const invoiceEnabled = localStorage.getItem(KEYS.INVOICE_ENABLED) === 'true';
+  const srcParam = source === 'paid' ? 'paid' : 'credit';
+
+  let badge = '';
+  if (txType === 'paid') badge = `<span class="badge bg-green-600/20 text-green-400">✅ ${t('paid_label')}</span>`;
+  else if (txType === 'credit') badge = `<span class="badge bg-orange-600/20 text-orange-400">⚠️ ${t('credit_label')}</span>`;
+  else badge = `<span class="badge bg-blue-600/20 text-blue-400">✅ ${t('paid_label')}</span>`;
+
+  let html = `
+    <div class="glass-card p-4">
+      <div class="flex items-center justify-between mb-3">${badge}
+        ${tx.customer ? `<span class="text-xs" style="color:var(--text-muted)">👤 ${tx.customer}</span>` : ''}
+      </div>
+      <div class="grid grid-cols-2 gap-3 text-sm">
+        <div><p class="text-xs" style="color:var(--text-dim)">${t('invoice_number')}</p><p class="font-mono font-bold text-xs" style="color:var(--text-primary)">${tx.id.toUpperCase()}</p></div>
+        <div><p class="text-xs" style="color:var(--text-dim)">${t('date_time')}</p><p class="text-xs" style="color:var(--text-primary)">${dateStr}</p><p class="text-xs" style="color:var(--text-muted)">${timeStr}</p></div>
+      </div>
+    </div>
+    <div class="glass-card p-4">
+      <h4 class="text-sm font-bold mb-3" style="color:var(--text-primary)">📦 ${t('product')}</h4>
+      <table class="invoice-table"><thead><tr><th>#</th><th>${t('product')}</th><th>${t('quantity')}</th><th>${t('unit_price')}</th><th>${t('subtotal')}</th></tr></thead><tbody>
+        ${tx.items.map((item,i) => `<tr><td style="color:var(--text-dim)">${i+1}</td><td class="font-medium">${item.name}</td><td class="text-center">${item.qty}</td><td class="text-center">${item.price.toFixed(2)}</td><td class="font-bold" style="color:var(--accent)">${(item.price*item.qty).toFixed(2)}</td></tr>`).join('')}
+        <tr class="total-row"><td colspan="4" class="text-left font-bold">${t('total')} (DZD)</td><td class="font-black text-lg">${tx.total.toFixed(2)}</td></tr>
+      </tbody></table>
+    </div>
+    <div class="rounded-2xl p-5 text-center" style="background:linear-gradient(135deg, rgba(0,255,100,0.08), rgba(5,150,105,0.08)); border:1px solid rgba(0,255,100,0.15)">
+      <p class="text-xs mb-1" style="color:var(--accent)">${t('total')} (DZD)</p>
+      <p class="text-3xl font-black font-mono" style="color:var(--accent)">${tx.total.toFixed(2)}</p>
+      <p class="text-xs" style="color:var(--text-dim)">د.ج</p>
+    </div>
+    <div class="space-y-2.5">`;
+
+  if (invoiceEnabled) {
+    html += `<button onclick="sendExistingInvoice('${tx.id}','${srcParam}')" class="w-full bg-green-600 text-white py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 active:opacity-80">
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      ${t('send_this_invoice')}</button>`;
+  }
+  html += `<button onclick="downloadExistingInvoice('${tx.id}','${srcParam}')" class="w-full bg-blue-600 text-white py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 active:opacity-80">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+    ${t('download_this_invoice')}</button></div>`;
+
+  document.getElementById('tx-detail-content').innerHTML = html;
+  openModal('modal-tx-detail');
+}
+
+// ==================== TOGGLES ====================
+function toggleInvoice() {
+  const current = localStorage.getItem(KEYS.INVOICE_ENABLED) === 'true';
+  localStorage.setItem(KEYS.INVOICE_ENABLED, (!current).toString());
+  updateInvoiceToggleUI();
+}
+
+function updateInvoiceToggleUI() {
+  const enabled = localStorage.getItem(KEYS.INVOICE_ENABLED) === 'true';
+  const toggle = document.getElementById('invoice-toggle');
+  if (enabled) toggle.classList.add('active'); else toggle.classList.remove('active');
+  const options = document.getElementById('invoice-options');
+  if (enabled) options.classList.remove('hidden'); else options.classList.add('hidden');
+  const shopNameInput = document.getElementById('shop-name-input');
+  const shopPhoneInput = document.getElementById('shop-phone-input');
+  if (shopNameInput) shopNameInput.value = localStorage.getItem(KEYS.SHOP_NAME) || '';
+  if (shopPhoneInput) shopPhoneInput.value = localStorage.getItem(KEYS.SHOP_PHONE) || '';
+}
+
+function saveShopName() { localStorage.setItem(KEYS.SHOP_NAME, document.getElementById('shop-name-input').value.trim()); }
+function saveShopPhone() { localStorage.setItem(KEYS.SHOP_PHONE, document.getElementById('shop-phone-input').value.trim()); }
+
+function updateCreditButton() {
+  const enabled = localStorage.getItem(KEYS.CREDIT_ENABLED) === 'true';
+  const btn = document.getElementById('btn-credit');
+  if (enabled) btn.classList.remove('hidden'); else btn.classList.add('hidden');
+}
+
+function toggleCredit() {
+  const current = localStorage.getItem(KEYS.CREDIT_ENABLED) === 'true';
+  localStorage.setItem(KEYS.CREDIT_ENABLED, (!current).toString());
+  updateCreditToggleUI(); updateCreditButton(); renderSettings();
+}
+
+function updateCreditToggleUI() {
+  const enabled = localStorage.getItem(KEYS.CREDIT_ENABLED) === 'true';
+  const toggle = document.getElementById('credit-toggle');
+  if (enabled) toggle.classList.add('active'); else toggle.classList.remove('active');
+  const mgmt = document.getElementById('credit-management');
+  if (enabled) mgmt.classList.remove('hidden'); else mgmt.classList.add('hidden');
+}
+
+// ==================== INVENTORY ====================
+function openAddProduct() {
+  document.getElementById('prod-barcode').value = '';
+  document.getElementById('prod-name').value = '';
+  document.getElementById('prod-price').value = '';
+  openModal('modal-add-product');
+}
+
+function saveProduct() {
+  const barcode = document.getElementById('prod-barcode').value.trim();
+  const name = document.getElementById('prod-name').value.trim();
+  const price = parseFloat(document.getElementById('prod-price').value);
+  if (!barcode || !name || isNaN(price) || price <= 0) { showToast(t('fill_fields'),'red'); return; }
+  const products = getStore(KEYS.PRODUCTS, []);
+  const existingIdx = products.findIndex(p => p.barcode === barcode);
+  if (existingIdx > -1) products[existingIdx] = { barcode, name, price };
+  else products.push({ barcode, name, price });
+  setStore(KEYS.PRODUCTS, products);
+  if (invScanner) { invScanner.stop().then(() => { invScanner.clear(); invScanner = null; }).catch(() => { invScanner = null; }); document.getElementById('inv-scanner-container').classList.add('hidden'); }
+  closeModal('modal-add-product');
+  renderInventory();
+  showToast(t('product_saved'));
+}
+
+function editProduct(barcode) {
+  const products = getStore(KEYS.PRODUCTS, []);
+  const product = products.find(p => p.barcode === barcode);
+  if (!product) return;
+  document.getElementById('edit-barcode').value = product.barcode;
+  document.getElementById('edit-name').value = product.name;
+  document.getElementById('edit-price').value = product.price;
+  openModal('modal-edit-product');
+}
+
+function updateProduct() {
+  const barcode = document.getElementById('edit-barcode').value;
+  const name = document.getElementById('edit-name').value.trim();
+  const price = parseFloat(document.getElementById('edit-price').value);
+  if (!name || isNaN(price) || price <= 0) { showToast(t('fill_fields'),'red'); return; }
+  const products = getStore(KEYS.PRODUCTS, []);
+  const idx = products.findIndex(p => p.barcode === barcode);
+  if (idx > -1) { products[idx] = { barcode, name, price }; setStore(KEYS.PRODUCTS, products); }
+  closeModal('modal-edit-product');
+  renderInventory();
+  showToast(t('product_updated'));
+}
+
+function deleteProduct(barcode) {
+  if (!confirm(t('delete_confirm'))) return;
+  let products = getStore(KEYS.PRODUCTS, []);
+  products = products.filter(p => p.barcode !== barcode);
+  setStore(KEYS.PRODUCTS, products);
+  renderInventory();
+  showToast(t('product_deleted'),'red');
+}
+
+function renderInventory() {
+  const products = getStore(KEYS.PRODUCTS, []);
+  const search = (document.getElementById('inv-search')?.value || '').toLowerCase();
+  const filtered = products.filter(p => p.name.toLowerCase().includes(search) || p.barcode.includes(search));
+  const listEl = document.getElementById('inventory-list');
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = `<div class="h-32 flex items-center justify-center text-sm" style="color:var(--text-dim)">${t('no_products')}</div>`;
+    return;
+  }
+
+  listEl.innerHTML = filtered.map(p => `
+    <div class="glass-card p-4 mb-2.5 flex items-center justify-between">
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-bold truncate" style="color:var(--text-primary)">${p.name}</p>
+        <p class="text-xs font-mono" style="color:var(--text-dim)">${p.barcode}</p>
+      </div>
+      <p class="font-bold text-sm mx-3" style="color:var(--accent)">${p.price.toFixed(2)} <span style="color:var(--text-dim)">د.ج</span></p>
+      <div class="flex gap-1.5">
+        <button onclick="editProduct('${p.barcode}')" class="w-10 h-10 bg-blue-600/20 text-blue-400 rounded-xl flex items-center justify-center active:bg-blue-600/40">
+          <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>
+        </button>
+        <button onclick="deleteProduct('${p.barcode}')" class="w-10 h-10 bg-red-600/20 text-red-400 rounded-xl flex items-center justify-center active:bg-red-600/40">
+          <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ==================== IMPORT/EXPORT ====================
+function exportDatabase() {
+  const data = {
+    products: getStore(KEYS.PRODUCTS, []),
+    transactions: getStore(KEYS.TRANSACTIONS, []),
+    credits: getStore(KEYS.CREDITS, []),
+    settings: {
+      shopName: localStorage.getItem(KEYS.SHOP_NAME) || '',
+      shopPhone: localStorage.getItem(KEYS.SHOP_PHONE) || '',
+      creditEnabled: localStorage.getItem(KEYS.CREDIT_ENABLED) === 'true',
+      invoiceEnabled: localStorage.getItem(KEYS.INVOICE_ENABLED) === 'true'
+    },
+    license: getStore(KEYS.LICENSE, null),
+    exportDate: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = `NILBORN-DZ-PAY-FULL-BACKUP-${dateStr}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(t('db_exported'));
+}
+
+function importDatabase(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (Array.isArray(data)) {
+        // Old format: only products
+        setStore(KEYS.PRODUCTS, data);
+        showToast(t('db_imported'));
+      } else if (data && typeof data === 'object') {
+        // New format: full backup
+        if (data.products) setStore(KEYS.PRODUCTS, data.products);
+        if (data.transactions) setStore(KEYS.TRANSACTIONS, data.transactions);
+        if (data.credits) setStore(KEYS.CREDITS, data.credits);
+        if (data.settings) {
+          if (data.settings.shopName !== undefined) localStorage.setItem(KEYS.SHOP_NAME, data.settings.shopName);
+          if (data.settings.shopPhone !== undefined) localStorage.setItem(KEYS.SHOP_PHONE, data.settings.shopPhone);
+          if (data.settings.creditEnabled !== undefined) localStorage.setItem(KEYS.CREDIT_ENABLED, data.settings.creditEnabled.toString());
+          if (data.settings.invoiceEnabled !== undefined) localStorage.setItem(KEYS.INVOICE_ENABLED, data.settings.invoiceEnabled.toString());
+        }
+        if (data.license) setStore(KEYS.LICENSE, data.license);
+        showToast(t('db_imported'));
+      }
+      // Refresh all views
+      renderInventory();
+      renderDashboard();
+      renderSettings();
+      updateCreditToggleUI();
+      updateInvoiceToggleUI();
+      updateCreditButton();
+    } catch (err) {
+      console.error(err);
+      showToast('Invalid JSON file','red');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ==================== DASHBOARD ====================
+function renderDashboard() {
+  const transactions = getStore(KEYS.TRANSACTIONS, []);
+  const filter = document.getElementById('dash-filter')?.value || 'today';
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  let filtered;
+  switch (filter) {
+    case 'today': filtered = transactions.filter(tx => new Date(tx.date) >= today); break;
+    case 'week': filtered = transactions.filter(tx => new Date(tx.date) >= new Date(now - 7*24*60*60*1000)); break;
+    case 'month': filtered = transactions.filter(tx => new Date(tx.date) >= new Date(now - 30*24*60*60*1000)); break;
+    default: filtered = transactions;
+  }
+
+  const todayTxs = transactions.filter(tx => new Date(tx.date) >= today);
+  const todayProfit = todayTxs.reduce((s,tx) => s + tx.total, 0);
+  document.getElementById('dash-today-profit').textContent = todayProfit.toFixed(2);
+  document.getElementById('dash-today-count').textContent = todayTxs.length;
+
+  const productCounts = {};
+  transactions.forEach(tx => { tx.items.forEach(item => { if (!productCounts[item.name]) productCounts[item.name] = 0; productCounts[item.name] += item.qty; }); });
+  const topProducts = Object.entries(productCounts).sort((a,b) => b[1]-a[1]).slice(0,5);
+  const topEl = document.getElementById('dash-top-products');
+  if (topProducts.length === 0) { topEl.innerHTML = `<p class="text-xs" style="color:var(--text-dim)">${t('no_products')}</p>`; }
+  else {
+    topEl.innerHTML = topProducts.map((p,i) => `
+      <div class="flex items-center justify-between" style="color:var(--text-secondary)">
+        <span class="flex items-center gap-2"><span class="text-yellow-400 font-bold">${i+1}.</span> ${p[0]}</span>
+        <span class="font-bold" style="color:var(--accent)">${p[1]}×</span>
+      </div>
+    `).join('');
+  }
+
+  const txEl = document.getElementById('dash-transactions');
+  if (filtered.length === 0) {
+    txEl.innerHTML = `<p class="text-xs text-center" style="color:var(--text-dim)">${t('no_transactions')}</p>`;
+  } else {
+    txEl.innerHTML = filtered.sort((a,b) => new Date(b.date)-new Date(a.date)).map(tx => {
+      const d = new Date(tx.date);
+      const time = d.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'});
+      const date = d.toLocaleDateString('en',{month:'short',day:'numeric'});
+      const itemsSummary = tx.items.map(i => i.name).join(', ');
+      const displayItems = itemsSummary.length > 25 ? itemsSummary.substring(0,25)+'...' : itemsSummary;
+      const typeBadge = tx.originallyCredit ? `<span class="badge bg-orange-600/20 text-orange-400 text-[10px]">${t('credit_label')}</span>` : '';
+      return `
+        <div onclick="showTransactionDetail('${tx.id}','paid')" class="glass-card p-3.5 flex items-center justify-between cursor-pointer active:opacity-70 transition-opacity">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <p class="text-sm font-bold truncate" style="color:var(--text-primary)">${displayItems}</p>
+              ${typeBadge}
+            </div>
+            <p class="text-xs" style="color:var(--text-dim)">${date} — ${time} · ${tx.items.length} ${t('items')}</p>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <p class="font-bold text-sm" style="color:var(--accent)">${tx.total.toFixed(2)}</p>
+            <svg class="w-4 h-4" style="color:var(--text-dim)" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+          </div>
+        </div>`;
+    }).join('');
+  }
+}
+
+// ==================== SETTINGS ====================
+function renderSettings() {
+  const license = getStore(KEYS.LICENSE, null);
+  const licEl = document.getElementById('settings-license');
+  const remEl = document.getElementById('settings-remaining');
+  if (license) {
+    if (license.type === 'lifetime') { licEl.textContent = `✓ ${t('lifetime_access')}`; licEl.style.color = 'var(--accent)'; remEl.textContent = ''; }
+    else { const remaining = 50-license.checkouts; licEl.textContent = `⏱ ${t('trial_access')}`; licEl.style.color = '#f59e0b'; remEl.textContent = `${t('remaining')}: ${remaining} ${t('of')} 50 ${t('checkout')}`; }
+  }
+  updateCreditToggleUI();
+  updateInvoiceToggleUI();
+  updateThemeToggleUI();
+  renderCreditCustomers();
+}
+
+function renderCreditCustomers() {
+  const credits = getStore(KEYS.CREDITS, []);
+  const listEl = document.getElementById('credit-customer-list');
+  const customerMap = {};
+  credits.forEach(c => { if (!customerMap[c.customer]) customerMap[c.customer] = []; customerMap[c.customer].push(c); });
+  const customers = Object.keys(customerMap);
+
+  if (customers.length === 0) {
+    listEl.innerHTML = `<p class="text-xs text-center" style="color:var(--text-dim)">${t('no_credit_customers')}</p>`;
+    return;
+  }
+
+  listEl.innerHTML = customers.map(name => {
+    const txs = customerMap[name];
+    const totalDebt = txs.reduce((s,tx) => s+tx.total, 0);
+    return `
+      <div onclick="showCustomerDetail('${name.replace(/'/g,"\\'")}')" class="glass-card p-4 flex items-center justify-between cursor-pointer active:opacity-70">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-full bg-orange-600/20 text-orange-400 flex items-center justify-center font-bold text-lg">${name.charAt(0).toUpperCase()}</div>
+          <div>
+            <p class="text-sm font-bold" style="color:var(--text-primary)">${name}</p>
+            <p class="text-xs" style="color:var(--text-dim)">${txs.length} ${t('checkout')}</p>
+          </div>
+        </div>
+        <p class="text-orange-400 font-bold">${totalDebt.toFixed(2)} <span style="color:var(--text-dim)" class="text-xs">د.ج</span></p>
+      </div>`;
+  }).join('');
+}
+
+function showCustomerDetail(customerName) {
+  const credits = getStore(KEYS.CREDITS, []);
+  const customerTxs = credits.filter(c => c.customer === customerName);
+  document.getElementById('customer-detail-name').textContent = `👤 ${customerName}`;
+  const totalDebt = customerTxs.reduce((s,tx) => s+tx.total, 0);
+  const listEl = document.getElementById('customer-detail-list');
+
+  let html = `<div class="rounded-2xl p-4 mb-3 text-center" style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.2)">
+    <p class="text-orange-300 text-xs">${t('total_debt')}</p>
+    <p class="text-orange-400 text-2xl font-black">${totalDebt.toFixed(2)} <span class="text-sm">د.ج</span></p>
+  </div>`;
+
+  html += customerTxs.sort((a,b) => new Date(b.date)-new Date(a.date)).map(tx => {
+    const d = new Date(tx.date);
+    const dateStr = d.toLocaleDateString('en',{month:'short',day:'numeric',year:'numeric'});
+    const timeStr = d.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'});
+    return `
+      <div class="glass-card p-4">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-xs" style="color:var(--text-muted)">${dateStr} — ${timeStr}</p>
+          <p class="text-orange-400 font-bold text-sm">${tx.total.toFixed(2)} د.ج</p>
+        </div>
+        <div class="text-xs space-y-1 mb-3" style="color:var(--text-secondary)">
+          ${tx.items.map(i => `<p>• ${i.name} × ${i.qty} = ${(i.price*i.qty).toFixed(2)} د.ج</p>`).join('')}
+        </div>
+        <div class="flex gap-2">
+          <button onclick="showTransactionDetail('${tx.id}','credit')" class="flex-1 bg-blue-600/20 text-blue-400 py-2.5 rounded-xl text-xs font-bold active:bg-blue-600/40">${t('view_invoice')} 🧾</button>
+          <button onclick="markCreditAsPaid('${tx.id}')" class="flex-1 bg-green-600 text-white py-2.5 rounded-xl text-xs font-bold active:opacity-80">${t('mark_paid')}</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  listEl.innerHTML = html;
+  openModal('modal-customer-detail');
+}
+
+function markCreditAsPaid(txId) {
+  let credits = getStore(KEYS.CREDITS, []);
+  const txIdx = credits.findIndex(c => c.id === txId);
+  if (txIdx === -1) return;
+  const tx = credits[txIdx];
+  const transactions = getStore(KEYS.TRANSACTIONS, []);
+  transactions.push({ id:tx.id, items:tx.items, total:tx.total, date:tx.date, type:'paid', originallyCredit:true, customer:tx.customer });
+  setStore(KEYS.TRANSACTIONS, transactions);
+  credits.splice(txIdx, 1);
+  setStore(KEYS.CREDITS, credits);
+  const remaining = credits.filter(c => c.customer === tx.customer);
+  if (remaining.length === 0) closeModal('modal-customer-detail');
+  else showCustomerDetail(tx.customer);
+  renderSettings();
+  showToast(t('marked_paid'));
+}
+
+// ==================== PDF EXPORT ====================
+function exportTransactionsPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const filter = document.getElementById('dash-filter')?.value || 'all';
+  const transactions = getStore(KEYS.TRANSACTIONS, []);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  let filtered, filterLabel;
+  switch (filter) {
+    case 'today': filtered = transactions.filter(tx => new Date(tx.date)>=today); filterLabel = t('today'); break;
+    case 'week': filtered = transactions.filter(tx => new Date(tx.date)>=new Date(now-7*24*60*60*1000)); filterLabel = t('week'); break;
+    case 'month': filtered = transactions.filter(tx => new Date(tx.date)>=new Date(now-30*24*60*60*1000)); filterLabel = t('month'); break;
+    default: filtered = transactions; filterLabel = t('all');
+  }
+
+  doc.setFontSize(18); doc.text('NILBORN-DZ-Pay - Transactions', 14, 20);
+  doc.setFontSize(11);
+  doc.text(`Filter: ${filterLabel} | Total: ${filtered.reduce((s,tx) => s+tx.total,0).toFixed(2)} DZD`, 14, 30);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 37);
+
+  const rows = filtered.sort((a,b) => new Date(b.date)-new Date(a.date)).map(tx => {
+    const d = new Date(tx.date);
+    return [d.toLocaleDateString(), d.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'}), tx.items.map(i => `${i.name} x${i.qty}`).join(', ').substring(0,50), `${tx.total.toFixed(2)} DZD`];
+  });
+
+  doc.autoTable({ head:[['Date','Time','Items','Total']], body:rows, startY:42, theme:'grid', headStyles:{fillColor:[0,200,80]} });
+  doc.save('NILBORN-DZ-PAY-Transactions.pdf');
+}
+
+function exportCreditPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const credits = getStore(KEYS.CREDITS, []);
+  const customerMap = {};
+  credits.forEach(c => { if (!customerMap[c.customer]) customerMap[c.customer] = {total:0,count:0}; customerMap[c.customer].total += c.total; customerMap[c.customer].count++; });
+
+  doc.setFontSize(18); doc.text('NILBORN-DZ-Pay - Credit Report', 14, 20);
+  doc.setFontSize(11);
+  const grandTotal = credits.reduce((s,c) => s+c.total, 0);
+  doc.text(`Total Outstanding: ${grandTotal.toFixed(2)} DZD`, 14, 30);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 37);
+
+  const rows = Object.entries(customerMap).map(([name,data]) => [name, data.count.toString(), `${data.total.toFixed(2)} DZD`]);
+  doc.autoTable({ head:[['Customer','Transactions','Total Debt']], body:rows, startY:42, theme:'grid', headStyles:{fillColor:[245,158,11]} });
+
+  let yPos = doc.lastAutoTable.finalY + 15;
+  if (yPos > 250) { doc.addPage(); yPos = 20; }
+  doc.setFontSize(14); doc.text('Detailed Credit History', 14, yPos);
+
+  const detailRows = credits.sort((a,b) => new Date(b.date)-new Date(a.date)).map(c => {
+    const d = new Date(c.date);
+    return [c.customer, d.toLocaleDateString(), c.items.map(i => `${i.name} x${i.qty}`).join(', ').substring(0,40), `${c.total.toFixed(2)} DZD`];
+  });
+
+  doc.autoTable({ head:[['Customer','Date','Items','Total']], body:detailRows, startY:yPos+5, theme:'grid', headStyles:{fillColor:[245,158,11]} });
+  doc.save('NILBORN-DZ-PAY-Credit.pdf');
+}
+
+// ==================== MANUAL ENTRY ====================
+function openManualEntry() {
+  document.getElementById('manual-name').value = '';
+  document.getElementById('manual-price').value = '';
+  const suggestionsDiv = document.getElementById('manual-suggestions');
+  suggestionsDiv.innerHTML = '';
+  suggestionsDiv.classList.add('hidden');
+  openModal('modal-manual-entry');
+}
+
+function searchProductsByName(query) {
+  const suggestionsDiv = document.getElementById('manual-suggestions');
+  suggestionsDiv.innerHTML = '';
+  if (!query) {
+    suggestionsDiv.classList.add('hidden');
+    return;
+  }
+
+  const products = getStore(KEYS.PRODUCTS, []);
+  const filtered = products.filter(p => p.name.toLowerCase().includes(query.toLowerCase())).slice(0, 5);
+
+  if (filtered.length === 0) {
+    suggestionsDiv.classList.add('hidden');
+    return;
+  }
+
+  suggestionsDiv.classList.remove('hidden');
+  filtered.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'p-3 hover:bg-slate-700 cursor-pointer border-b border-slate-700 last:border-0 text-sm text-white';
+    div.textContent = `${p.name} (${p.price} DZD)`;
+    div.onclick = () => selectManualProduct(p);
+    suggestionsDiv.appendChild(div);
+  });
+}
+
+function selectManualProduct(product) {
+  document.getElementById('manual-name').value = product.name;
+  document.getElementById('manual-price').value = product.price;
+  const suggestionsDiv = document.getElementById('manual-suggestions');
+  suggestionsDiv.innerHTML = '';
+  suggestionsDiv.classList.add('hidden');
+}
+
+function addManualToCart() {
+  const name = document.getElementById('manual-name').value.trim();
+  const price = parseFloat(document.getElementById('manual-price').value);
+
+  if (!name || isNaN(price) || price < 0) {
+    showToast(t('invalid_input'), 'red');
+    return;
+  }
+
+  const products = getStore(KEYS.PRODUCTS, []);
+  const existing = products.find(p => p.name.toLowerCase() === name.toLowerCase());
+
+  const productToAdd = {
+    barcode: existing ? existing.barcode : `MANUAL-${Date.now()}`,
+    name: name,
+    price: price
+  };
+
+  addToCart(productToAdd);
+  closeModal('modal-manual-entry');
+}
+
+// ==================== UTILITIES ====================
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) {
+  document.getElementById(id).classList.add('hidden');
+  if (id === 'modal-add-product' && invScanner) {
+    invScanner.stop().then(() => { invScanner.clear(); invScanner = null; }).catch(() => { invScanner = null; });
+    document.getElementById('inv-scanner-container').classList.add('hidden');
+  }
+}
+
+function showToast(msg, color='green') {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = 'fixed top-5 left-4 right-4 z-[100] py-3.5 px-5 rounded-2xl text-sm font-bold shadow-lg animate-fade-in text-center';
+  if (color === 'red') toast.classList.add('bg-red-600','text-white');
+  else if (color === 'orange') toast.classList.add('bg-orange-600','text-white');
+  else toast.classList.add('bg-green-600','text-white');
+  toast.classList.remove('hidden');
+  setTimeout(() => toast.classList.add('hidden'), 2500);
+}
+
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopPOSScanner();
+  else if (currentTab === 'pos') initPOSScanner();
+});
+</script>
+</body>
+</html>
